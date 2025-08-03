@@ -2,15 +2,21 @@ package com.springexample.securityexample;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
     /**
@@ -31,11 +37,29 @@ public class SecurityConfig {
         http.authorizeHttpRequests((requests) -> requests.anyRequest().authenticated());
         //http.formLogin(withDefaults());
 
-        // The following line makes the application stateless by disabling session management, no more cookies.
+        // (Optional) The following line makes the application stateless by disabling session
+        // management, no more cookies.
         http.sessionManagement(session ->
               session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         http.httpBasic(withDefaults());
         return http.build();
+    }
+
+    // (Optional) To add in-memory authentication and handle multiple users, then we need to define the
+    // following bean. This is mainly for demonstration purposes, not recommended for production use.
+    @Bean
+    public UserDetailsService userDetailsService() {
+        UserDetails user1 = User.withUsername("user1")
+              .password("{noop}password1") // {noop} indicates no password encoder is used
+              .roles("USER")
+              .build();
+
+        UserDetails admin = User.withUsername("admin")
+              .password("{noop}adminPass") // {noop} indicates no password encoder is used
+              .roles("ADMIN")
+              .build();
+
+        return new InMemoryUserDetailsManager();
     }
 }

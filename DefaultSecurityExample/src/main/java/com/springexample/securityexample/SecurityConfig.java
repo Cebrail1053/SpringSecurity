@@ -12,7 +12,8 @@ import static org.springframework.security.config.Customizer.withDefaults;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    // The default user and password are stored in application.properties
+    // The default user and password are stored in application.properties. With the current configuration,
+    // we can only have a single user since we are not using in-memory authentication or a database.
 
     // This configuration is the default security configuration for a Spring Boot application,
     // as shown in SpringBootWebSecurityConfiguration
