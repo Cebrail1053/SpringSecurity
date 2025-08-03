@@ -32,6 +32,12 @@ public class SecurityConfig {
      * response cookie for JSESSIONID, which is used to maintain the session state.
      */
 
+    // The default security configuration for a Spring Boot application is shown in
+    // SpringBootWebSecurityConfiguration.java. By default it provides form-based login and
+    // HTTP Basic authentication. The default user is 'user' with a password that is generated
+    // and printed in the console. The default user and password can be overridden in the
+    // application.properties file. 
+
     @Bean
     SecurityFilterChain basicSecurityFilterChain(HttpSecurity http) throws Exception {
         http.authorizeHttpRequests((requests) -> requests.anyRequest().authenticated());
