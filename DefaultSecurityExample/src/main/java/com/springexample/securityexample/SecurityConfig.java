@@ -14,6 +14,9 @@ public class SecurityConfig {
 
     // The default user and password are stored in application.properties
 
+    // This configuration is the default security configuration for a Spring Boot application,
+    // as shown in SpringBootWebSecurityConfiguration
+
     @Bean
     SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
         http.authorizeHttpRequests((requests) -> requests.anyRequest().authenticated());
