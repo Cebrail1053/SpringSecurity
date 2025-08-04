@@ -1,5 +1,6 @@
 package com.springexample.securityexample;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -10,8 +11,13 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import org.springframework.security.provisioning.JdbcUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+
+import javax.sql.DataSource;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
@@ -19,6 +25,9 @@ import static org.springframework.security.config.Customizer.withDefaults;
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
+
+    @Autowired
+    private DataSource dataSource;
 
     /**
      * The default security configuration for a Spring Boot application is shown in
@@ -61,9 +70,8 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // (Optional) To add in-memory authentication and handle multiple users, then we need to define the
-    // following bean. This is mainly for demonstration purposes, not recommended for production use. Once
-    // we have a database, we will no longer need this in-memory user details service.
+    // (Optional) To add in-memory authentication or database authentication, and handle multiple users,
+    // then we need to define the following bean.
     @Bean
     public UserDetailsService userDetailsService() {
         UserDetails user1 = User.withUsername("user1")
@@ -72,10 +80,24 @@ public class SecurityConfig {
               .build();
 
         UserDetails admin = User.withUsername("admin")
-              .password("{noop}adminPass") // {noop} indicates no password encoder is used
+              .password(passwordEncoder().encode("adminPass")) // Uses BCryptPasswordEncoder
               .roles("ADMIN")
               .build();
 
-        return new InMemoryUserDetailsManager(user1, admin);
+        // Uncomment the following line to use in-memory user details manager. This is mainly for
+        // demonstration purposes, not recommended for production use
+//        return new InMemoryUserDetailsManager(user1, admin);
+
+        // Use JdbcUserDetailsManager to manage users in a database. Ensure you have a DataSource bean
+        // configured in your application.
+        JdbcUserDetailsManager userDetailsManager = new JdbcUserDetailsManager(dataSource);
+        userDetailsManager.createUser(user1);
+        userDetailsManager.createUser(admin);
+        return userDetailsManager;
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 }
