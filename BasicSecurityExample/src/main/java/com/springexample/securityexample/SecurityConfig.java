@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -20,6 +21,12 @@ import static org.springframework.security.config.Customizer.withDefaults;
 public class SecurityConfig {
 
     /**
+     * The default security configuration for a Spring Boot application is shown in
+     * SpringBootWebSecurityConfiguration.java. By default, it provides form-based login and
+     * HTTP Basic authentication. The default user is 'user' with a password that is generated
+     * and printed in the console. The default user and password can be overridden in the
+     * application.properties file.
+     * <p>
      * Removing default form login will remove the login page and will not give us access to the
      * logout functionality (/logout endpoint). We can still use HTTP Basic authentication,
      * instead of an HTML form for login, we see a browser prompt/popup for username and password.
@@ -32,16 +39,18 @@ public class SecurityConfig {
      * response cookie for JSESSIONID, which is used to maintain the session state.
      */
 
-    // The default security configuration for a Spring Boot application is shown in
-    // SpringBootWebSecurityConfiguration.java. By default it provides form-based login and
-    // HTTP Basic authentication. The default user is 'user' with a password that is generated
-    // and printed in the console. The default user and password can be overridden in the
-    // application.properties file. 
-
     @Bean
     SecurityFilterChain basicSecurityFilterChain(HttpSecurity http) throws Exception {
-        http.authorizeHttpRequests((requests) -> requests.anyRequest().authenticated());
-        //http.formLogin(withDefaults());
+        // Disable CSRF for H2 console as it prevents the H2 console from working properly.
+        http.csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**"));
+        // Enable H2 console support, which is a web-based database console for H2.
+        http.headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin));
+
+        http.authorizeHttpRequests((requests) ->
+              requests
+                    .requestMatchers("/h2-console/**").permitAll()
+                    .anyRequest().authenticated());
+        //        http.formLogin(withDefaults()); // Uncomment this line to enable form-based login
 
         // (Optional) The following line makes the application stateless by disabling session
         // management, no more cookies.
@@ -53,7 +62,8 @@ public class SecurityConfig {
     }
 
     // (Optional) To add in-memory authentication and handle multiple users, then we need to define the
-    // following bean. This is mainly for demonstration purposes, not recommended for production use.
+    // following bean. This is mainly for demonstration purposes, not recommended for production use. Once
+    // we have a database, we will no longer need this in-memory user details service.
     @Bean
     public UserDetailsService userDetailsService() {
         UserDetails user1 = User.withUsername("user1")
@@ -66,6 +76,6 @@ public class SecurityConfig {
               .roles("ADMIN")
               .build();
 
-        return new InMemoryUserDetailsManager();
+        return new InMemoryUserDetailsManager(user1, admin);
     }
 }
