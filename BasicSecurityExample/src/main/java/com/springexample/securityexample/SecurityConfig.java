@@ -1,11 +1,16 @@
 package com.springexample.securityexample;
 
+import com.springexample.securityexample.jwt.AuthEntryPointJwt;
+import com.springexample.securityexample.jwt.AuthTokenFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.User;
@@ -13,9 +18,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.provisioning.JdbcUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import javax.sql.DataSource;
 
@@ -27,7 +32,25 @@ import static org.springframework.security.config.Customizer.withDefaults;
 public class SecurityConfig {
 
     @Autowired
-    private DataSource dataSource;
+    private DataSource dataSource; // Used for JdbcUserDetailsManager
+
+    @Autowired
+    private AuthEntryPointJwt unauthorizedHandler; // Custom entry point for handling unauthorized access
+
+    @Bean
+    SecurityFilterChain jwtSecurityFilterChain(HttpSecurity http) throws Exception {
+        http.authorizeHttpRequests(requests ->
+              requests.requestMatchers("/h2-console/**").permitAll()
+                    .requestMatchers("/signin").permitAll()
+                    .anyRequest().authenticated());
+        http.sessionManagement(session ->
+              session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+        http.exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler));
+        http.headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin));
+        http.csrf(CsrfConfigurer::disable);
+        http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
+        return http.build();
+    }
 
     /**
      * The default security configuration for a Spring Boot application is shown in
@@ -47,30 +70,29 @@ public class SecurityConfig {
      * Form login also sends a Basic Authorization header with each request, and both a request and
      * response cookie for JSESSIONID, which is used to maintain the session state.
      */
+//    @Bean
+//    SecurityFilterChain basicSecurityFilterChain(HttpSecurity http) throws Exception {
+//        // Disable CSRF for H2 console as it prevents the H2 console from working properly.
+//        http.csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**"));
+//        // Enable H2 console support, which is a web-based database console for H2.
+//        http.headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin));
+//
+//        http.authorizeHttpRequests((requests) ->
+//              requests
+//                    .requestMatchers("/h2-console/**").permitAll()
+//                    .anyRequest().authenticated());
+////        http.formLogin(withDefaults()); // Uncomment this line to enable form-based login
+//
+//        // (Optional) The following line makes the application stateless by disabling session
+//        // management, no more cookies.
+//        http.sessionManagement(session ->
+//              session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+//
+//        http.httpBasic(withDefaults());
+//        return http.build();
+//    }
 
-    @Bean
-    SecurityFilterChain basicSecurityFilterChain(HttpSecurity http) throws Exception {
-        // Disable CSRF for H2 console as it prevents the H2 console from working properly.
-        http.csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**"));
-        // Enable H2 console support, which is a web-based database console for H2.
-        http.headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin));
-
-        http.authorizeHttpRequests((requests) ->
-              requests
-                    .requestMatchers("/h2-console/**").permitAll()
-                    .anyRequest().authenticated());
-        //        http.formLogin(withDefaults()); // Uncomment this line to enable form-based login
-
-        // (Optional) The following line makes the application stateless by disabling session
-        // management, no more cookies.
-        http.sessionManagement(session ->
-              session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
-
-        http.httpBasic(withDefaults());
-        return http.build();
-    }
-
-    // (Optional) To add in-memory authentication or database authentication, and handle multiple users,
+    // To add in-memory authentication or database authentication, and handle multiple users,
     // then we need to define the following bean.
     @Bean
     public UserDetailsService userDetailsService() {
@@ -86,7 +108,7 @@ public class SecurityConfig {
 
         // Uncomment the following line to use in-memory user details manager. This is mainly for
         // demonstration purposes, not recommended for production use
-//        return new InMemoryUserDetailsManager(user1, admin);
+        //        return new InMemoryUserDetailsManager(user1, admin);
 
         // Use JdbcUserDetailsManager to manage users in a database. Ensure you have a DataSource bean
         // configured in your application.
@@ -99,5 +121,15 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public AuthTokenFilter authenticationJwtTokenFilter() {
+        return new AuthTokenFilter();
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration builder) throws Exception {
+        return builder.getAuthenticationManager();
     }
 }
