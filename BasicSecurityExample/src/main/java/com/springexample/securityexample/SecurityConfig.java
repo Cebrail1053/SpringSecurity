@@ -3,6 +3,7 @@ package com.springexample.securityexample;
 import com.springexample.securityexample.jwt.AuthEntryPointJwt;
 import com.springexample.securityexample.jwt.AuthTokenFilter;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -96,15 +97,7 @@ public class SecurityConfig {
     // then we need to define the following bean.
     @Bean
     public UserDetailsService userDetailsService() {
-        UserDetails user1 = User.withUsername("user1")
-              .password("{noop}password1") // {noop} indicates no password encoder is used
-              .roles("USER")
-              .build();
 
-        UserDetails admin = User.withUsername("admin")
-              .password(passwordEncoder().encode("adminPass")) // Uses BCryptPasswordEncoder
-              .roles("ADMIN")
-              .build();
 
         // Uncomment the following line to use in-memory user details manager. This is mainly for
         // demonstration purposes, not recommended for production use
@@ -113,9 +106,26 @@ public class SecurityConfig {
         // Use JdbcUserDetailsManager to manage users in a database. Ensure you have a DataSource bean
         // configured in your application.
         JdbcUserDetailsManager userDetailsManager = new JdbcUserDetailsManager(dataSource);
-        userDetailsManager.createUser(user1);
-        userDetailsManager.createUser(admin);
         return userDetailsManager;
+    }
+
+    @Bean
+    public CommandLineRunner initDatabase(UserDetailsService userDetailsService) {
+        return args -> {
+            JdbcUserDetailsManager manager = (JdbcUserDetailsManager) userDetailsService;
+            UserDetails user1 = User.withUsername("user1")
+                  .password("{noop}password1") // {noop} indicates no password encoder is used
+                  .roles("USER")
+                  .build();
+
+            UserDetails admin = User.withUsername("admin")
+                  .password(passwordEncoder().encode("adminPass")) // Uses BCryptPasswordEncoder
+                  .roles("ADMIN")
+                  .build();
+
+            manager.createUser(user1);
+            manager.createUser(admin);
+        };
     }
 
     @Bean
